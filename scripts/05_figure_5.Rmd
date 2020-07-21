@@ -1,0 +1,91 @@
+---
+title: "05_FME"
+author: "Lucia S. Layritz"
+date: "17 Dezember 2019"
+output: html_document
+---
+
+
+*DESCRIPTION*
+*this file calculated FME emissions and gives out figure 5*
+*dependencies:00_CI and 03a_ESP*
+
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/Lucia/Documents/Arbeit/PIK_MA/Paper/Paper_MA/LaTeX')
+```
+
+DATA
+```{r}
+#methane stream, transformed to CO2 using GWP100
+m = 5.21*34
+#sum_emi needs to be loaded
+```
+
+GRAPHICS
+```{r}
+theme = theme(legend.position="bottom", 
+              legend.title=element_text(size=15), 
+              legend.text=element_text(size=15), 
+              plot.title=element_text(hjust=0.5, size=20), 
+              axis.title.x=element_text(size=15),
+              axis.title.y=element_text(size=15),
+              axis.text.x=element_text(size=15, angle=90, hjust=1),
+              axis.text.y=element_text(size=15),
+              text=element_text(size = 20))
+
+sc ="#8843B6"
+eh="#2E8B57"
+ocm = "#FF8C00"
+```
+
+PANEL A
+```{r}
+df = data.frame(perc=c(0.01, 0.05, 0.1, 0.5, 1, 2.5), 
+                emi = c(m*0.0001, m*0.0005 , m*0.001, m*0.005,m*0.01, m*0.025 ) )
+
+plot_5a = ggplot(df) + geom_point(aes(x=perc, y=emi), pch=18, cex=3 ) + 
+  labs(x="Fugitive methane emissions \n in % of reactor inflow", y=expression("t"[CO2eq.]*"/ t"[Ethylene])) + 
+  theme_bw() + theme
+```
+
+PANEL B
+```{r}
+
+fme = array(0L, dim=c(7,26), dimnames=list(c("0.01", "0.05",
+                                           "0.1", "0.5", "1", "2.5",  "OCM"),
+                                           paste(carbon_int, "t_CO2/MWh")))
+fme["OCM",] = sum_emi["OCM",]
+
+#initiate vector percentage
+perc = c(0.01, 0.05, 0.1, 0.5, 1, 2.5)
+
+for (i in 1:length(perc))
+  fme[i,] = sum_emi["OCM",] + (m*perc[i])/100
+
+fme_gg = melt(fme)
+fme_gg$Var2 = sub(" t_CO2/MWh", "", fme_gg$Var2)
+fme_gg$Var2 = as.numeric(as.character(fme_gg$Var2))
+
+plot_5b = ggplot(fme_gg, aes(x=Var2, y=value, bg=Var1, shape=Var1))+ geom_point(cex=2, alpha=0.7, col="black") +
+  theme_bw() + theme + 
+  labs(x=expression(atop("Carbon Intensity in"," t"[CO2]*"/MWh"[Electricity])), 
+       y=expression(" t"[CO2eq.]*"/ t"[Ethylene])) + 
+  scale_shape_manual(name="", labels=c("0.01%", "0.05%","0.1%", "0.5%", "1%", "2.5%", "OCM"),
+                     values=c(24, 24, 24, 24, 24, 24, 24)) + 
+  scale_fill_manual(name="", 
+                    values = c("#D9D9D9", "#BDBDBD", "#969696", "#737373", "#525252", "#252525",  ocm),
+                    labels=c("0.01%", "0.05%","0.1%", "0.5%", "1%", "2.5%", "OCM")) +
+  scale_x_reverse(lim=c(0.4,0)) +
+  scale_y_continuous(lim=c(-5, 20))
+```
+
+MERGE PLOTS
+```{r}
+plot = ggarrange(plot_5a, plot_5b, nrow =1, ncol=2, labels=c("A", "B"), align="v", common.legend=TRUE, legend = "bottom")
+
+getwd()
+
+pdf("figures/plot_5.pdf", height=4)
+plot
+dev.off()
+```

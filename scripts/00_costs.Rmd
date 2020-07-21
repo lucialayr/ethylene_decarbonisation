@@ -1,0 +1,148 @@
+---
+title: "04_costs"
+author: "Lucia S. Layritz"
+date: "18 Dezember 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*DESCRIPTION*
+*this file calculates static costs as a function of carbon prices*
+*Dependecies:01_CI*
+*be aware that carbon price for electricity is missing*
+PACKAGES
+```{r}
+
+```
+
+DATA
+```{r}
+carbon = seq(0, 4000, by=100) #carbon price vector
+
+economics = array(0L, dim=c(3, 41, 9), #initialize array
+                  dimnames = list(c("SC", "EH", "OCM"), 
+                                  paste(carbon, "EUR/t_CO2"),
+                                  c("Carbon(Ethylene)", "Carbon(Methane)", "Carbon(Refinery)",
+                                    ,"Naphtha", "Electricity", 
+                                    "Revenues (Methane Conversion)", 
+                                    "Fixed Costs", "Revenue By-Products")))
+
+prices = economics
+units = economics
+```
+
+CAPEX + OPEX *unit: EUR/t ethylene* *Capex costs are fixed to current values*
+```{r}
+r = 0.07
+a = 30
+CRF = (r*((1+r)^a))/(-1+(1+r)^a)
+
+cf_sc = 1000000
+C_sc = 1334944800
+O_sc = 76.42
+fc_sc = (C_sc *CRF + O_sc)/cf_sc # eur/t ethylene
+
+for (i in 1:length(carbon))
+  prices["SC",,"Fixed Costs"] = fc_sc
+  prices["EH",,"Fixed Costs"] = fc_sc
+  units["SC",,"Fixed Costs"] = 1
+  units["EH",,"Fixed Costs"] = 1
+
+cf_ocm = 148280
+C_ocm = 188903764
+O_ocm = 63.75
+fc_ocm = (C_ocm *CRF + O_ocm)/cf_ocm # eur/ t ethylene
+
+
+cf_cc = 1000000
+C_cc = 16*100000000*0.9
+O_cc = 0
+fc_cc = 3.64*(C_cc *CRF + O_cc)/cf_cc #eur/ t ethylene
+
+
+cf_h2 = 148280
+C_h2 = 500*1000*1000 
+O_h2 = 178
+fc_h2 = (C_h2 *CRF + O_h2)/cf_h2 #eur/t ethylene
+
+fc_ocm=fc_ocm+fc_cc+fc_h2
+
+for (i in 1:length(carbon))
+  prices["OCM",,"Fixed Costs"] = fc_ocm
+  units["OCM",,"Fixed Costs"] = 1
+```
+
+PRICES UTILITIES
+```{r}
+#carbon price: EUR/t
+for (i in 1:length(carbon))
+  prices[,i,"Carbon(Ethylene)"] = carbon[i]
+for (i in 1:length(carbon))
+  prices[,i,"Carbon(Methane)"] = carbon[i]
+for (i in 1:length(carbon))
+  prices[,i,"Carbon(Refinery)"] = carbon[i]
+
+#electricity
+el = 27*0.9/0.277#from remind, 2020, Base, to stay consistent, converted from USD/GJ to EUR/Mhw
+for (i in 1:length(carbon))
+  prices[,,"Electricity"] = el
+
+#naphtha
+naphtha = 550*0.9 #trading economics (18/12/19) EUR/t
+for (i in 1:length(carbon))
+  prices[,,"Naphtha"] = naphtha
+
+#methane
+meth = 7.7*0.9*0.277#from remind, 2020, Base, to stay consistent, converted from USD/GJ to EUR/Mhw
+for (i in 1:length(carbon))
+  prices[,,"Revenues (Methane Conversion)"] = meth
+```
+
+FLOWS
+```{r}
+
+#naphtha
+for (i in 1:length(carbon))
+  units["SC",,"Naphtha"] = 3.58 #t/t ethylene
+  units["EH",,"Naphtha"] = 3.58 #t/t ethylene
+  units["OCM",,"Naphtha"] = 0 #t/t ethylene
+  
+#electricity  
+for (i in 1:length(carbon))
+  units["SC",,"Electricity"] = 0.21 #MWh/t ethylene
+  units["EH",,"Electricity"] = 6.99 #t/t ethylene
+  units["OCM",,"Electricity"] = (1.10 + 32.2 + 1.765) #t/t ethylene  (process+electro+cc)
+  
+#methane revenues: numbers from table MA
+for (i in 1:length(carbon))
+  units["SC",,"Revenues (Methane Conversion)"] = -1.10-0.79 #MWh/t ethylene
+  units["EH",,"Revenues (Methane Conversion)"] = -7.57-1.10 #MWh/t ethylene
+  units["OCM",,"Revenues (Methane Conversion)"] = -2.53-0.270 #MWh/t ethylene  
+  
+#carbon prices
+for (i in 1:length(carbon))
+  units["SC",,"Carbon(Ethylene)"] = 1 #t/t ethylene
+  units["EH",,"Carbon(Ethylene)"] = 1 #t/t ethylene
+  units["OCM",,"Carbon(Ethylene)"] = 1 #t/t ethylene 
+  units["SC",,"Carbon(Methane)"] = 0.488 #t/t ethylene #obly process, power plant is covered in output price
+  units["EH",,"Carbon(Methane)"] = 0 #t/t ethylene
+  units["OCM",,"Carbon(Methane)"] = 0 #t/t ethylene 
+  units["SC",,"Carbon(Refinery)"] = 1.915 #t/t ethylene
+  units["EH",,"Carbon(Refinery)"] = 1.916 #t/t ethylene
+  units["OCM",,"Carbon(Refinery)"] = 0 #t/t ethylene 
+```
+
+
+```{r}
+costs = units*prices
+#byproducts #refund 64% of costs excluding capex -> boulamanti
+for (i in 1:length(carbon))
+  costs["SC",i, "Revenue By-Products"] = sum(costs["SC",i,"Naphtha"], costs["SC", i, "Electricity"] )*0.64*(-1) 
+for (i in 1:length(carbon))
+  costs["EH",i, "Revenue By-Products"] = costs["SC",i,"Revenue By-Products"] 
+```
+
+                                     

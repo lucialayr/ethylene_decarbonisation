@@ -1,0 +1,115 @@
+---
+title: "07_scenarios_emission"
+author: "Lucia S. Layritz"
+date: "21 Dezember 2019"
+output: html_document
+---
+*DESCRIPTION*
+*this script calculates and plots scenario data cradle to grave*
+*Dependencies: 00_carbon_intensities_budg600*
+
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/Lucia/Documents/Arbeit/PIK_MA/Paper/Paper_MA/LaTeX')
+```
+
+GRAPHICS
+```{r}
+theme = theme(legend.position="bottom", 
+              legend.title=element_text(size=15), 
+              legend.text=element_text(size=15), 
+              plot.title=element_text(hjust=0.5, size=20), 
+              axis.title.x=element_text(size=15),
+              axis.title.y=element_text(size=15),
+              axis.text.x=element_text(size=15, angle=90, hjust=1),
+              axis.text.y=element_text(size=15),
+              text=element_text(size = 20))
+sc ="#8843B6"
+eh="#2E8B57"
+ocm = "#FF8C00"
+```
+
+EOL EMISSIONS
+```{r}
+inc = 3.13 - 1.3*ci$value#[17:32] #check gabi file -> unit error?
+rec = 0.569*ci$value#[17:32] #check gabi file -> unit error?
+#products_total (Gabi)
+pvc_tot = 1.97 * 2.23
+pe_bottle_tot = 3.31
+pe_foam_tot = 2.64
+
+#conversion share (percentages from nature plastics paper)
+pvc_conv = 0.22*pvc_tot 
+pe_bottle_conv = 0.36*pe_bottle_tot
+pe_foam_tot = 0.36*pe_foam_tot
+
+#polymerisation share from resin production
+pe = 1.8*(1-0.8)
+
+ds_pe_bottle = pe + pe_bottle_conv
+ds_pe_foam = pe + pe_foam_tot
+ds_pvc = pvc_conv
+
+pvc_inc = inc + rep(ds_pvc, time=32)
+pvc_rec = rec + rep(ds_pvc, time=32)
+pe_bottle_inc = inc + rep(ds_pe_bottle, time=32)
+pe_bottle_rec = rec + rep(ds_pe_bottle, time=32)
+pe_foam_inc = inc + rep(ds_pe_foam, time=32)
+pe_foam_rec = rec + rep(ds_pe_foam, time=32)
+
+eol_base=data.frame( pvc_inc, pvc_rec, 
+               pe_bottle_inc, pe_bottle_rec,
+               pe_foam_inc, pe_foam_rec)
+
+eol = data.frame("CI" = ci$value, "Scen" = ci$scenario, "year" = ci$period, "Min" = 0, "Max" =1)
+
+for (i in 1:length(ci$value)){
+  eol[i, "Min"] = min(eol_base[i,])
+  eol[i, "Max"] = max(eol_base[i,])
+}
+```
+
+DATA PREPARATION EMISSIONS
+```{r}
+emi_ocm = as.ggplot(emi_ocm_rem)
+emi_ocm[is.na(emi_ocm)] = 0
+sum_ocm = setkey(setDT(emi_ocm), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+sum_ocm$max = sum_ocm$total + eol$Max
+sum_ocm$min = sum_ocm$total + eol$Min
+
+emi_sc = as.ggplot(emi_sc_rem)
+emi_sc[is.na(emi_sc)] = 0
+sum_sc = setkey(setDT(emi_sc), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+sum_sc$max = sum_sc$total + eol$Max
+sum_sc$min = sum_sc$total + eol$Min
+
+emi_eh = as.ggplot(emi_eh_rem)
+emi_eh[is.na(emi_eh)] = 0
+sum_eh = setkey(setDT(emi_eh), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+sum_eh$max = sum_eh$total + eol$Max
+sum_eh$min = sum_eh$total + eol$Min
+
+sum_emi = data.frame("Year" = sum_ocm$Year, "Scen" = sum_ocm$Data1, 
+                     "SC_max" = sum_sc$max, "EH_max" = sum_eh$max, "OCM_max" = sum_ocm$max,
+                     "SC_min" = sum_sc$min, "EH_min" = sum_eh$min, "OCM_min" = sum_ocm$min)
+sum_emi_gg = melt(sum_emi, measure.vars= c("SC_max", "EH_max", "OCM_max",
+                                           "SC_min", "EH_min", "OCM_min"))
+```
+
+PLOT EMISSIONS
+```{r}
+vertDf = data.frame(labels=c("0.38","0.1","0.04"),years=c(2020,2030,2050))
+
+plot_6a = ggplot(sum_emi, aes(Year)) +
+  facet_wrap(~Scen) + 
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_vline(data=vertDf, aes(xintercept=years,linetype=labels), size = 0.4, col="red", alpha=.6,
+                        show.legend=FALSE) +
+  scale_linetype_manual(name="", values=c("0.38"="solid","0.1"="dashed","0.04"="dotted"))  +
+  labs(x = "time in years", y = expression("t"[CO2]*"/t"[Ethylene]))+
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_ribbon(aes(x=Year,ymin=SC_min, ymax=SC_max), fill=sc, alpha=.6) +
+  geom_ribbon(aes(x=Year,ymin=EH_min, ymax=EH_max), fill=eh, alpha=.6) +
+  geom_ribbon(aes(x=Year, ymin=OCM_min, ymax=OCM_max), fill=ocm, alpha=.6) +
+  theme_bw() + theme +
+  scale_x_continuous(limits=c(2015, 2050))
+```

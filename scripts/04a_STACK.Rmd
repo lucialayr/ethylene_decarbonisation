@@ -1,0 +1,178 @@
+---
+title: "04_stacked"
+author: "Lucia S. Layritz"
+date: "18 Dezember 2019"
+output: html_document
+---
+
+
+*DESCRIPTION*
+*This file produces disaggregated, stacked barcharts for emissions*
+*Dependencies: 00_CI, 00_costs_bug[XXX]*
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/Lucia/Documents/Arbeit/PIK_MA/Paper/Paper_MA/LaTeX')
+```
+
+PACKAGES
+```{r}
+library(ggpubr)
+library(data.table)
+```
+
+GRAPHICS
+```{r}
+theme = theme(legend.position="bottom", 
+              legend.title=element_text(size=15), 
+              legend.text=element_text(size=15), 
+              plot.title=element_text(hjust=0.5, size=20), 
+              axis.title.x=element_text(size=15),
+              axis.title.y=element_text(size=15),
+              axis.text.x=element_text(size=15, angle=90, hjust=1),
+              axis.text.y=element_text(size=15),
+              text=element_text(size = 20))
+
+lab_emi = c("Electricity" = "Electricity (Process)", 
+        "Electrolyser" = "Electricity (Electrolyser)", 
+        "System_Expansion" = "Electricity (System Expansion)",
+        "Methane" = "Methane (Downstream)", 
+        "Heat" = "Methane (Process Heat)", 
+        "Refinery" = "Refinery (Naphtha Upstream)", 
+        "CarbCapt(net)" = "Carbon Capture (Net)",
+        "By_Products" = "By-Products")
+
+lab_c = c( "Carbon_e (EUR/ t Ethylene)" = "Carbon Price (Ethylene)",
+           "Carbon_m (EUR/ t Ethylene)"= "Carbon Price (Methane)",
+          "Carbon_n (EUR/ t Ethylene)" = "Carbon Price (Refinery)",
+          "Naphtha| w/o carbon price (EUR/ t Ethylene)" = "Naphtha",
+            "Final Energy|Electricity|Industry (EUR/ t Ethylene)" = "Electricity",
+          "Fixed Costs (EUR/ t Ethylene)" = "Fixed Costs",
+          "By-Products (EUR/ t Ethylene)" = "Revenues (By-Products)",
+          "Secondary Energy|Gases (EUR/ t Ethylene)" = "Revenues (Methane Combustion)")
+
+
+
+el = "#FF0000"
+se = "#990040"
+ely = "#C80000"
+ref = "#8FBC8F"
+bp = "#008000"
+meth_proc = "#20B2AA"
+meth_ds = "#008B8B"
+cc = "#1E90FF"
+
+carb_e = "#A52A2A"
+carb_m = "#800000"
+carb_n = "#A0522D"
+na = "#8FBC8F"
+elc = "#5F9EA0"
+rev_meth = "#D2691E"
+fix = "#00008B"
+bpc = "#DAA520"
+
+col_c = c("Carbon_e (EUR/ t Ethylene)" = carb_e,
+          "Carbon_m (EUR/ t Ethylene)"= carb_m,
+          "Carbon_n (EUR/ t Ethylene)" = carb_n,
+          "Naphtha| w/o carbon price (EUR/ t Ethylene)" = na,
+           "Final Energy|Electricity|Industry (EUR/ t Ethylene)" = elc,
+          "Fixed Costs (EUR/ t Ethylene)" = fix,
+          "Secondary Energy|Gases (EUR/ t Ethylene)" = rev_meth,
+          "By-Products (EUR/ t Ethylene)" = bpc)
+          
+
+
+labels_emi = data.frame(labs = c(2050, 2030, 2020), x = c("0.04", "0.1", "0.28"))
+labels_costs = data.frame(labs = c(2050, 2030, 2020), x = c("2050", "2030", "2020"))
+```
+
+DATA PREAPARATION EMISSIONS
+```{r}
+emi_gg = melt(emissions)
+emi_gg$Var3 = sub(" t_CO2/MWh", "", emi_gg$Var3)
+emi_gg$Var3 = as.numeric(as.character(emi_gg$Var3))
+emi_sub_gg = subset(emi_gg, Var3==0.28 | Var3==0.1 | Var3==0.04) #targets
+emi_sub_gg = subset(emi_sub_gg, Var2=="SC" | Var2=="EH" | Var2=="OCM") #tecnologies
+emi_sub_gg$Var3 = as.character(emi_sub_gg$Var3)
+```
+
+PLOT EMISSIONS
+```{r}
+plot_4a = ggplot(emi_sub_gg) +
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_col(colour = "#505050", size=.25, 
+           aes(x=(Var3), y = value, 
+               fill=factor(Var1, 
+                           levels=c("System_Expansion","Electricity", "Electrolyser",  
+                                    "By_Products", "Refinery", "Methane", "Heat", 
+                                    "CarbCapt(net)")))) +
+  scale_x_discrete(limits=rev(c("0.04", "0.1", "0.28"))) +
+  geom_text(data=labels_emi, aes(x =(x), y=15.5, label=labs), size=3) +
+  facet_wrap(~Var2) +
+  theme + theme_bw() +
+  labs(x = expression("t"[CO2]*"/MWh"[Electricity]), y = expression("t"[CO2]*"/t"[Ethylene])) +
+  scale_fill_manual(name="Emissions", 
+                    values=c("Electricity" = el, "Electrolyser" = ely, "System_Expansion" = se,
+                             "Methane" = meth_ds, "Heat" = meth_proc, "Refinery" = ref, 
+                             "CarbCapt(net)" = cc,
+                             "By_Products" = bp), labels=lab_emi)
+```
+
+DATA PREPARATION SCENARIO COSTS 
+*utility costs are taken from B1300 as not available in my 600 dataset*
+```{r}
+costs_ocm_gg = (as.ggplot(costs_ocm_rem)) 
+el1300 = subset(costs_ocm_gg, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_ocm_gg, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_ocm_gg = subset(costs_ocm_gg, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_ocm_gg = rbind(costs_ocm_gg, el1300, gas1300)
+costs_ocm_gg$Data2 = "OCM" #prepare for facet_wrap()
+
+costs_sc_gg = (as.ggplot(costs_sc_rem))
+el1300 = subset(costs_sc_gg, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_sc_gg, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_sc_gg = subset(costs_sc_gg, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_sc_gg = rbind(costs_sc_gg, el1300, gas1300)
+costs_sc_gg$Data2 = "SC"
+
+costs_eh_gg = (as.ggplot(costs_eh_rem))
+el1300 = subset(costs_eh_gg, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_eh_gg, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_eh_gg = subset(costs_eh_gg, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_eh_gg = rbind(costs_eh_gg, el1300, gas1300)
+costs_eh_gg$Data2 = "EH"
+
+costs_gg = rbind(costs_sc_gg, costs_eh_gg, costs_ocm_gg)
+costs_sub_gg = subset(costs_gg, Year=="2020" | Year=="2030" | Year=="2050") #years
+costs_sub_gg$Year = as.character(costs_sub_gg$Year) #for evenly spaces x-axis
+costs_sub_gg$Data2 = factor(costs_sub_gg$Data2, levels=c("SC", "EH", "OCM")) #contorl order of panels
+```
+
+
+
+          
+PLOT COSTS
+```{R}
+plot_4b = ggplot(costs_sub_gg) + 
+  geom_col(colour = "#505050", size=.25,
+           aes(x=Year, y = Value, 
+               fill=factor(Data3, 
+                           levels=c("Carbon_e (EUR/ t Ethylene)", "Carbon_m (EUR/ t Ethylene)",
+                                    "Carbon_n (EUR/ t Ethylene)", 
+                                    "Naphtha| w/o carbon price (EUR/ t Ethylene)", 
+                                    "Final Energy|Electricity|Industry (EUR/ t Ethylene)", 
+                                    "Fixed Costs (EUR/ t Ethylene)", 
+                                    "Secondary Energy|Gases (EUR/ t Ethylene)", 
+                                    "By-Products (EUR/ t Ethylene)")))) + 
+  facet_wrap(~Data2) +
+  scale_x_discrete(breaks=c("2020","2030", "2050" ), labels=c("0.28", "0.1", "0.04")) +
+  labs(y = expression("EUR/t"[Ethylene]), x = expression("t"[CO2]*"/MWh"[Electricity])) +
+  scale_fill_manual(name="Costs", values=col_c,
+                    labels=lab_c) +
+  geom_text(data=labels_costs, aes(x =(x), y=6250, label=labs), size=3) +
+  theme + theme_bw()
+  
+```
+
+   

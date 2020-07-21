@@ -1,0 +1,23 @@
+---
+title: "b_Figure_4"
+author: "Lucia S. Layritz"
+date: "20 Dezember 2019"
+output: html_document
+---
+
+*DESCRIPTION*
+*this figure puts together all panels of figure 4*
+*Dependencies: 00_CI, 00_costs_bug600, 04a_STACK*
+
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/Lucia/Documents/Arbeit/PIK_MA/Paper/Paper_MA/LaTeX')
+```
+
+MERGE PLOTS
+```{r}
+plot = ggarrange(plot_4a, plot_4b, nrow=2, ncol=1, align="hv", labels=c("A", "B"))
+
+pdf("figures/plot_4.pdf")
+plot
+dev.off()
+```

@@ -1,0 +1,165 @@
+---
+title: "02_ESP"
+author: "Lucia S. Layritz"
+date: "1 November 2019"
+output: html_document
+---
+
+*DESCRIPTION*
+*this scrips uses the data produced in 00_CI to calculate cradle-to-gate emissions and ESP*
+*it also procudes plot 3B und 3C*
+*Dependencies: 00_CI*
+
+LOAD PACKAGES
+```{r}
+require(ggplot2)
+require(data.table)
+require(ggpubr)
+require(knitr)
+```
+
+AGGREGATE DATA
+```{r}
+sum_emi = replace(emissions, is.na(emissions), 0) #replace na with 0 for summing
+sum_emi = apply(sum_emi, c(2,3), sum)
+```
+
+CALCULATE ESP ABSOLUTE
+```{r}
+esp_ocm = array(0L, dim=c(3,26), dimnames=list(c("OCM_EL", "OCM_NG", "OCM_HO"),
+                                           paste(carbon_int, "t_CO2/MWh")))
+
+esp_eh = array(0L, dim=c(3,26), dimnames=list(c("EH_EL", "EH_NG", "EH_HO"),
+                                           paste(carbon_int, "t_CO2/MWh")))
+
+esp_eh["EH_EL",] = sum_emi["SC",] - sum_emi["EH",]
+esp_eh["EH_NG",] = sum_emi["NG",] - sum_emi["EH",]
+esp_eh["EH_HO",] = sum_emi["HO",] - sum_emi["EH",]
+esp_ocm["OCM_EL",] = sum_emi["SC", ] - sum_emi["OCM",]
+esp_ocm["OCM_NG",] = sum_emi["NG", ] - sum_emi["OCM",]
+esp_ocm["OCM_HO",] = sum_emi["HO", ] - sum_emi["OCM",]
+```
+
+CALCULATE ESP RELATIVE
+```
+ESP_{abs} = E(SC) - E(alternative) ESP>0:new process is beneficial
+ESP_{rel} = E(alternative)/E(SC)
+```
+```{r}
+esp_rel = array(0L, dim=c(6, 26), dimnames=list(c("OCM_EL", "OCM_NG", "OCM_HO", "EH_EL", "EH_NG", "EH_HO" ),
+                                                paste(carbon_int, "t_CO2/MWh")))
+
+esp_rel["EH_EL",] = (esp_eh["EH_EL",]/sum_emi["SC",])
+esp_rel["EH_NG",] = (esp_eh["EH_NG",]/sum_emi["NG",])
+esp_rel["EH_HO",] = (esp_eh["EH_HO",]/sum_emi["HO",])
+esp_rel["OCM_EL",] = (esp_ocm["OCM_EL",]/sum_emi["SC",])
+esp_rel["OCM_NG",] = (esp_ocm["OCM_NG",]/sum_emi["NG",])
+esp_rel["OCM_HO",] = (esp_ocm["OCM_HO",]/sum_emi["HO",])
+```
+
+
+GRAPHIC SETTINGS
+```{r}
+theme = theme(legend.position="bottom", 
+              legend.title=element_text(size=15), 
+              legend.text=element_text(size=15), 
+              plot.title=element_text(hjust=0.5, size=20), 
+              axis.title.x=element_text(size=15),
+              axis.title.y=element_text(size=15),
+              axis.text.x=element_text(size=15, angle=90, hjust=1),
+              axis.text.y=element_text(size=15),
+              text=element_text(size = 20))
+sc ="#8843B6"
+eh="#2E8B57"
+ocm = "#FF8C00"
+ng = "#A400A4"
+ho = "#0000FF"
+
+vertDf<-data.frame(years=c(0.28,0.1,0.04),labels=c("2020","2030","2050"))
+```
+
+PLOT ESP OCM
+```{r}
+esp_ocm_gg = melt(esp_ocm)
+esp_ocm_gg$Var2 = sub(" t_CO2/MWh", "", esp_ocm_gg$Var2)
+esp_ocm_gg$Var2 = as.numeric(as.character(esp_ocm_gg$Var2))
+plot_2a = ggplot(esp_ocm_gg, aes(x=Var2, y=value, col=Var1, shape=Var1, bg=Var1)) + 
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_vline(data=vertDf, aes(xintercept=years,linetype=labels), 
+             size = 0.6, col="red", alpha=.6) +
+  geom_point(cex=2.5, stroke=.5, alpha=0.7) +
+  scale_color_manual(name="", 
+                     labels=c("OCM(Electricity)", "OCM(Natural Gas)", "OCM(Heating Oil)"), 
+                     values=c( "black", "black", "black"), guide=FALSE) + 
+  scale_shape_manual(name="", 
+                     labels=c("OCM(Electricity)", "OCM(Natural Gas)", "OCM(Heating Oil)"), 
+                     values=c(24, 14, 2), guide=FALSE) +
+  scale_fill_manual(name="",  
+                    labels=c("OCM(Electricity)", "OCM(Natural Gas)", "OCM(Heating Oil)"), 
+                    values=c(ocm, NA, NA), guide=FALSE) + 
+  xlab("") + 
+  ylab("") +
+  theme_bw() + theme +
+  scale_linetype_manual(name="", values=c("2020"="solid","2030"="dashed","2050"="dotted"), 
+                        guide = guide_legend(nrows=3, ncol=1 )) +
+  scale_x_reverse(lim=c(0.4,0))
+```
+
+PLOT ESP EH
+```{r}
+esp_eh_gg = melt(esp_eh)
+esp_eh_gg$Var2 = sub(" t_CO2/MWh", "", esp_eh_gg$Var2)
+esp_eh_gg$Var2 = as.numeric(as.character(esp_eh_gg$Var2))
+plot_2b = ggplot(esp_eh_gg, aes(x=Var2, y=value, col=Var1, shape=Var1, bg=Var1)) + 
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_vline(data=vertDf, aes(xintercept=years,linetype=labels), size = 0.6, 
+             col="red", alpha=.6) +
+  geom_point(cex=2.5, stroke=0.5, alpha=0.7) +
+  scale_color_manual(name="", 
+                     labels=c("EH (Electricity)", "EH (Natural Gas)", "EH (Heating Oil)"), 
+                     values=c("black", "black", "black"), guide=FALSE) + 
+  scale_shape_manual(name="", 
+                     labels=c("EH (Electricity)", "EH (Natural Gas)", "EH (Heating Oil)"), 
+                     values=c(23, 9, 5)) +
+  scale_fill_manual(name="",  
+                    labels=c("EH (Electricity)", "EH (Natural Gas)", "EH (Heating Oil)"), 
+                    values=c(eh, NA, NA)) + 
+  labs(x="", y = expression(atop("Absolute ESP", paste("t"[CO2eq.]*"/ t"[Ethylene])))) + 
+  theme_bw() + theme +
+  theme(legend.position="none") +
+  scale_linetype_manual(name="", values=c("2020"="solid","2030"="dashed","2050"="dotted"), guide = guide_legend(
+    direction = "horizontal") ) +
+  scale_x_reverse(lim=c(0.4, 0)) + theme(plot.margin=unit(c(.1, .15, .1 , .5), "cm"))
+```
+
+PLOT RELATIVE ESP
+```{r}
+esp_rel_gg = melt(esp_rel)
+esp_rel_gg$Var2 = sub(" t_CO2/MWh", "", esp_rel_gg$Var2)
+esp_rel_gg$Var2 = as.numeric(as.character(esp_rel_gg$Var2))
+plot_2c = ggplot(esp_rel_gg, aes(x=Var2, y=value, col=Var1, shape=Var1, bg=Var1)) + 
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_vline(data=vertDf, aes(xintercept=years,linetype=labels), size = 0.6, 
+             col="red", alpha=.6, show.legend = FALSE) +
+  geom_point(cex=2.5, stroke=.5, alpha=0.7) +
+  scale_color_manual(name="", 
+                     labels=c("OCM (Electricity)", "OCM (Natural Gas)", "OCM (Heating Oil)", 
+                             "EH (Electricity)", "EH (Natural Gas)", "EH (Heating Oil)"),
+                     values=c("black", "black", "black", "black", "black", "black"),
+                     guide=FALSE) + 
+  scale_shape_manual(name="", 
+                     labels=c("OCM (Electricity)", "OCM (Natural Gas)", "OCM (Heating Oil)", 
+                             "EH (Electricity)", "EH (Natural Gas)", "EH (Heating Oil)"),
+                     values=c(24, 14, 2, 23, 9, 5)) +
+  scale_fill_manual(name="",  
+                    labels=c("OCM (Electricity)", "OCM (Natural Gas)", "OCM (Heating Oil)", 
+                             "EH (Electricity)", "EH (Natural Gas)", "EH (Heating Oil)"
+                    ),
+                    values=c(ocm, NA, NA, eh, NA, NA)) +
+  labs(x=expression("Carbon Intensity in t"[CO2]*"/MWh"[Electricity]), y="Relative ESP")+
+  theme_bw() + theme + guides(shape=guide_legend(nrows=3, ncol=2)) + 
+  theme(plot.margin=unit(c(.1, .2, .1, .8), "cm")) +
+  scale_linetype_manual(name="", values=c("2020"="solid","2030"="dashed","2050"="dotted"), guide = guide_legend(
+    direction = "horizontal") ) +
+  scale_x_reverse(lim=c(0.4,0))
+```

@@ -1,0 +1,205 @@
+---
+title: "Cradle_to_Grave"
+author: "Lucia S. Layritz"
+date: "5 November 2019"
+output: html_document
+---
+
+
+*DESCRIPTIONS*
+*this file calculates cradle--to--grave emissions for all product systems and produces figure 3A*
+*Dependencies: 00_CI and 03a_ESP*
+
+LOAD PACKAGES
+```{r}
+require(ggplot2)
+require(data.table)
+require(ggpubr)
+```
+
+LOAD DATA
+```
+sum_emi = #load sum emi once finished 
+carbon_int = #load carbon int(maybe create external function to make sure it is the same everywhere?)
+```
+
+END-OF-LIFE EMISSIONS
+```{r}
+eol = array(0L, dim=c(3,3,3, 26),
+            dimnames=list(c("Cradle-to-Gate", "Recycling", "Incineration"),
+                          c("SC", "EH", "OCM"),
+                          c("PVC", "PE_bottle", "PE_foam"),
+                         paste(carbon_int, "t_CO2/MWh")))
+#fill base emissions
+for (i in 1:3)
+  for (j in 1:3){
+    eol[i, "SC",j,] = sum_emi["SC",]
+    eol[i, "EH",j,] = sum_emi["EH",]
+    eol[i, "OCM",j,] = sum_emi["OCM",]}
+
+#fill incineration and recycling
+for (i in 1:3)
+  for (j in 1:3)
+    eol["Incineration",i,j,] = eol["Incineration",i,j,] + 3.13 - 1.3*carbon_int #tCO2/tEthylene
+
+for (i in 1:3)
+  for (j in 1:3)
+    eol["Recycling",i,j,] = eol["Recycling",i,j,] + 0.569*carbon_int #tCO2/tEthylene
+
+
+#fill conversion per product
+#products_total (Gabi)
+pvc_tot = 1.97 * 2.23
+pe_bottle_tot = 3.31
+pe_foam_tot = 2.64
+
+#conversion share (percentages from nature cc plastics paper (Zheng et al))
+pvc_conv = 0.22*pvc_tot 
+pe_bottle_conv = 0.36*pe_bottle_tot
+pe_foam_conv = 0.36*pe_foam_tot
+
+pe = 1.8*(1-0.8)
+
+pe_bottle_conv = pe + pe_bottle_conv
+pe_foam_conv = pe + pe_foam_conv
+
+for (i in 1:3){
+  eol["Recycling",i,"PVC",] = eol["Recycling",i,"PVC",]  + pvc_conv
+  eol["Recycling",i,"PE_bottle",] = eol["Recycling",i,"PE_bottle",]  + pe_bottle_conv
+  eol["Recycling",i,"PE_foam",] = eol["Recycling",i,"PE_foam",]  + pe_foam_conv
+  eol["Incineration",i,"PVC",] = eol["Incineration",i,"PVC",]  + pvc_conv
+  eol["Incineration",i,"PE_bottle",] = eol["Incineration",i,"PE_bottle",]  + pe_bottle_conv
+  eol["Incineration",i,"PE_foam",] = eol["Incineration",i,"PE_foam",]  + pe_foam_conv}
+```
+
+SPLIT DATA 
+```{r}
+eol_sc = eol[,"SC",,]
+eol_eh = eol[,"EH",,]
+eol_ocm = eol[,"OCM",,]
+```
+
+RIBBON
+```{r}
+ribbon = data.frame("Var4"=carbon_int, "OCM_min", "EH_min", "SC_min", "OCM_max", "EH_max", "SC_max")
+for (i in 1:length(carbon_int)){
+  ribbon[i,"OCM_min"] = min(eol_ocm["Recycling",,i])
+  ribbon[i,"OCM_max"] = max(eol_ocm["Incineration",,i])
+  ribbon[i,"EH_min"] = min(eol_eh["Recycling",,i])
+  ribbon[i,"EH_max"] = max(eol_eh["Incineration",,i])
+  ribbon[i,"SC_min"] = min(eol_sc["Recycling",,i])
+  ribbon[i,"SC_max"] = max(eol_sc["Incineration",,i])
+}
+ribbon_new = data.frame("Var4"=ribbon$Var4, "OCM_max"=ribbon$OCM_max, "OCM_min"=ribbon$OCM_min,
+                        "SC_max"=ribbon$SC_max, "SC_min"=ribbon$SC_min,
+                        "EH_max"=ribbon$EH_max, "EH_min"=ribbon$EH_min)
+minn = melt(ribbon_new, measure.vars=c("OCM_min", "SC_min", "EH_min"))
+maxx = melt(ribbon_new, measure.vars=c("OCM_max", "SC_max", "EH_max"))
+
+#match names
+ribbon_gg = data.frame("Var4" = minn$Var4, "Var2" = minn$variable, "min" = minn$value, "max" = maxx$value )
+#rename factors
+levels(ribbon_gg[,2])[levels(ribbon_gg[,2])=="OCM_min"] ="OCM"
+levels(ribbon_gg[,2])[levels(ribbon_gg[,2])=="SC_min"] ="SC"
+levels(ribbon_gg[,2])[levels(ribbon_gg[,2])=="EH_min"] ="EH"
+
+```
+
+LOAD GRAPHICS
+```{r}
+theme = theme(legend.position="bottom", 
+              legend.title=element_text(size=15), 
+              legend.text=element_text(size=15), 
+              plot.title=element_text(hjust=0.5, size=20), 
+              axis.title.x=element_text(size=15),
+              axis.title.y=element_text(size=15),
+              axis.text.x=element_text(size=15, angle=90, hjust=1),
+              axis.text.y=element_text(size=15),
+              text=element_text(size = 20))
+sc ="#8843B6"
+eh="#2E8B57"
+ocm = "#FF8C00"
+ng = "#A400A4"
+ho = "#0000FF"
+
+vertDf<-data.frame(years=c(0.28,0.1,0.04),labels=c("2020","2030","2050"))
+
+```
+
+PLOT 
+```{r}
+#*legend for lines not added here but in different plot to be able to control it better*
+
+eol_gg = melt(eol)
+eol_gg$Var4 = sub(" t_CO2/MWh", "", eol_gg$Var4)
+eol_gg$Var4 = as.numeric(as.character(eol_gg$Var4))
+
+plot_3 = ggplot(eol_gg, aes(x=Var4, fill=Var2, shape=Var2)) +
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_vline(data=vertDf,aes(xintercept=years,linetype=labels), 
+             size = 0.6, col="red", alpha=.6, show.legend = FALSE) +
+  facet_wrap(~Var2) +
+  geom_ribbon(data=ribbon_gg, aes(ymin=min, ymax=max), alpha=.4, show.legend=FALSE) +
+  geom_point(data = subset(eol_gg, Var2=="SC" & Var1 == "Recycling"),
+             aes(y=value),col=sc, alpha=.7,  stroke=.5, shape=2) +
+  geom_point(data = subset(eol_gg, Var2=="SC" & Var1 == "Incineration"),
+             aes(y=value),col=sc, alpha=.7,  stroke=.5, shape=6) +
+  geom_point(data = subset(eol_gg, Var2=="EH" & Var1 == "Recycling"),
+             aes(y=value),col=eh, alpha=.7,  stroke=.5, shape=2) +
+  geom_point(data = subset(eol_gg, Var2=="EH" & Var1 == "Incineration"),
+             aes(y=value),col=eh, alpha=.7,  stroke=.5, shape=6) +
+  geom_point(data = subset(eol_gg, Var2=="OCM" & Var1 == "Recycling"),
+             aes(y=value),col=ocm, alpha=.7,  stroke=.5, shape=2) +
+  geom_point(data = subset(eol_gg, Var2=="OCM" & Var1 == "Incineration"),
+             aes(y=value),col=ocm, alpha=.7,  stroke=.5, shape=6) +
+  geom_point(data = subset(eol_gg, Var2=="SC" & Var1=="Cradle-to-Gate" ),
+             aes(y=value),col="black", bg=sc, alpha=.7,  stroke=.5, shape=21) +
+  geom_point(data = subset(eol_gg, Var2=="EH" & Var1=="Cradle-to-Gate" ),
+             aes(y=value),col="black", bg=eh, alpha=.7,  stroke=.5, shape=23) +
+  geom_point(data = subset(eol_gg, Var2=="OCM" & Var1=="Cradle-to-Gate" ),
+             aes(y=value),col="black", bg=ocm, alpha=.7,  stroke=.5, shape=24) +
+  scale_shape_manual(name="", values=c(24, 6, 2),
+                     labels=c("Cradle-to-Gate", "Recycling", "Incineration")) +
+  scale_fill_manual(name="", values=c(ocm, sc, eh), guide=FALSE) +
+  labs(y=expression(atop("Total emissions", paste("t"[CO2]*"/t"[Ethylene]))), x="" )+
+  scale_y_continuous(limits=c(-4, 18)) +
+  theme_bw() + theme + theme(plot.margin=unit(c(.1, .2, .1, .5), "cm")) +
+  scale_linetype_manual(name="",
+                        values=c("2020"="solid","2030"="dashed","2050"="dotted"),
+                        guide = guide_legend(direction = "horizontal") ) +
+  scale_x_reverse(lim=c(0.4,0),  breaks =seq(0, .4, 0.1))
+```
+
+LEGEND
+```{r}
+plot_3l = ggplot(eol_gg, aes(x=Var4, fill=Var2, shape=Var2)) +
+geom_hline(yintercept=0, size=0.1, col="gray") +
+geom_vline(data=vertDf,aes(xintercept=years,linetype=labels),
+size = 0.4, col="red", alpha=.6, show.legend = FALSE) +
+facet_wrap(~Var2) +
+geom_ribbon(data=ribbon_gg, aes(ymin=min, ymax=max), alpha=.4, show.legend=FALSE) +
+geom_point(data = subset(eol_gg, Var2=="SC" & Var1 != "Cradle-to-Gate"),
+aes(y=value),col=sc, alpha=.7,  stroke=.5, shape=1) +
+geom_point(data = subset(eol_gg, Var2=="SC" & Var1=="Cradle-to-Gate" ),
+aes(y=value),col="black", bg=sc, alpha=.7,  stroke=.5, shape=21) +
+geom_point(data = subset(eol_gg, Var2=="EH" & Var1 != "Cradle-to-Gate"),
+aes(y=value),col=eh, alpha=.7,  stroke=.5) +
+geom_point(data = subset(eol_gg, Var2=="EH" & Var1=="Cradle-to-Gate" ),
+aes(y=value),col="black", bg=eh, alpha=.7,  stroke=.5, shape=23) +
+geom_point(data = subset(eol_gg, Var2=="OCM" & Var1 != "Cradle-to-Gate"),
+aes(y=value),col=ocm, alpha=.7,  stroke=.5) +
+geom_point(data = subset(eol_gg, Var2=="OCM" & Var1=="Cradle-to-Gate" ),
+aes(y=value),col="black", bg=ocm, alpha=.7,  stroke=.5, shape=24) +
+scale_shape_manual(name="", values=c(24, 2, 6),
+labels=c("Cradle-to-Gate", "Recycling", "Incineration")) +
+scale_fill_manual(name="", values=c(ocm, sc, eh), guide=FALSE) +
+labs(y=expression("t"[CO2]*"/t"[Ethylene]), x="" )+
+guides(shape = guide_legend(reverse = TRUE, nrow=3, ncol=1,
+override.aes = list(col="black", bg="black"))) +
+scale_y_continuous(limits=c(-4, 18)) +
+theme_bw() + theme + theme(plot.margin=unit(c(.1, .1, .1, .5), "cm")) +
+scale_linetype_manual(name="",
+values=c("2020"="solid","2030"="dashed","2050"="dotted"),
+guide = guide_legend(direction = "horizontal") ) +
+scale_x_reverse(lim=c(0.4,0),  breaks =seq(0, .4, 0.1))
+```

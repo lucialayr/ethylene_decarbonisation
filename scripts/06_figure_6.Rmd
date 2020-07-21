@@ -1,0 +1,22 @@
+---
+title: "c_figure_8"
+author: "Lucia S. Layritz"
+date: "21 Dezember 2019"
+output: html_document
+---
+
+*DESCRIPTION*
+*this porduce the summary figure 8 from subpanels*
+*Dependencies: 06a_EMI, 06b_COSTS*
+
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/Lucia/Documents/Arbeit/PIK_MA/Paper/Paper_MA/LaTeX')
+```
+
+```{r}
+plot = ggarrange(plot_6a, plot_6b, nrow=2,ncol=1, align="hv", common.legend = TRUE, legend="bottom")
+
+pdf("figures/plot_6.pdf", height=9)
+plot
+dev.off()
+```

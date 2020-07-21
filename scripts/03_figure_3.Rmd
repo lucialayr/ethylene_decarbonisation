@@ -1,0 +1,50 @@
+---
+title: "a_figure_3"
+author: "Lucia S. Layritz"
+date: "17 Dezember 2019"
+output: html_document
+---
+
+*DESCRIPTION*
+*this file creates figure 3 by putting together all subfiles*
+*Dependencies: 03a_ESP and 03b_EoL*
+*legend eol:plot_3*
+*legend lines: plot_2a*
+*legend products system: plot_2c*
+
+PACKAGES
+```{r}
+require(gridExtra)
+```
+
+GET LEGENDS
+```{r}
+leg_2a = get_legend(plot_2a)
+leg_2a = as_ggplot(leg_2a) + theme(plot.margin = unit(c(.1, 4, .1, .1), "cm"))
+leg_2c = get_legend(plot_2c)
+leg_2c = as_ggplot(leg_2c) + theme(plot.margin = unit(c(.1, 4, .1, .1), "cm"))
+leg_3 = get_legend(plot_3l)
+leg_3 = as_ggplot(leg_3) + theme(plot.margin = unit(c(.1, .1, .1, .1), "cm"))
+```
+
+MERGE PLOTS
+```{r}
+plot_2d = ggarrange(plot_2b, plot_2a,ncol=2, nrow=1, legend = "none")
+plot_2 = ggarrange(plot_2d, plot_2c, ncol=1, nrow=2,
+                   labels=c("B","C"))
+
+plot_ = ggarrange(plot_3, plot_2d, plot_2c, ncol=1, nrow=3, legend="none",
+                  labels=c("A","B", "C"))
+
+
+leg = ggarrange(leg_3, leg_2a, leg_2c, ncol=3, nrow=1)
+
+plot = as_ggplot(grid.arrange(arrangeGrob(plot_, ncol=1, nrow=1),
+                              arrangeGrob(leg, ncol=1, nrow=1),
+                              heights=c(3,.5) ))
+
+
+pdf("plot_3.pdf", height=10, width=8.6)
+plot
+dev.off()
+```

@@ -1,0 +1,130 @@
+---
+title: "07_scenarios"
+author: "Lucia S. Layritz"
+date: "20 Dezember 2019"
+output: html_document
+---
+*DESCRIPTION*
+*this file computes scenarios (Base and Budg600) for Costs and Flexible Costs*
+*Dependencies:00_costs_budg[XXX]*
+
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/Lucia/Documents/Arbeit/PIK_MA/Paper/Paper_MA/LaTeX')
+```
+GRAPHICS
+```{r}
+theme = theme(legend.position="bottom", 
+              legend.box="vertical",
+              legend.title=element_text(size=15), 
+              legend.text=element_text(size=15), 
+              plot.title=element_text(hjust=0.5, size=20), 
+              axis.title.x=element_text(size=15),
+              axis.title.y=element_text(size=15),
+              axis.text.x=element_text(size=15, angle=90, hjust=1),
+              axis.text.y=element_text(size=15),
+              text=element_text(size = 20))
+
+sc ="#8843B6"
+eh="#2E8B57"
+ocm = "#FF8C00"
+ocm_ff = "#C9DC16"
+ocm_ff4 = "#EFA700"
+```
+
+DATA PREPARATION FLEX
+```{r}
+#sc
+costs_sc = as.ggplot(costs_sc_rem)
+costs_sc[is.na(costs_sc)] = 0
+el1300 = subset(costs_sc, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_sc, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_sc_b = subset(costs_sc, Data1=="Base")
+costs_sc_600 = subset(costs_sc, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_sc_600 = rbind(costs_sc_600, el1300, gas1300)
+costs_sc_600$Data1 = "Budg600"
+costs_sc =rbind(costs_sc_600, costs_sc_b)
+sum_sc = setkey(setDT(costs_sc), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+
+##eh
+costs_eh = as.ggplot(costs_eh_rem)
+costs_eh[is.na(costs_eh)] = 0
+el1300 = subset(costs_eh, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_eh, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_eh_b = subset(costs_eh, Data1=="Base")
+costs_eh_600 = subset(costs_eh, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_eh_600 = rbind(costs_eh_600, el1300, gas1300)
+costs_eh_600$Data1 = "Budg600"
+costs_eh = rbind(costs_eh_600, costs_eh_b)
+sum_eh = setkey(setDT(costs_eh), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+
+#ocm
+costs_ocm = as.ggplot(costs_ocm_rem)
+costs_ocm[is.na(costs_ocm)] = 0
+el1300 = subset(costs_ocm, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_ocm, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_ocm_b = subset(costs_ocm, Data1=="Base")
+costs_ocm_600 = subset(costs_ocm, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_ocm_600 = rbind(costs_ocm_600, el1300, gas1300)
+costs_ocm_600$Data1 = "Budg600"
+costs_ocm =rbind(costs_ocm_600, costs_ocm_b)
+sum_ocm = setkey(setDT(costs_ocm), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+
+#ff
+costs_ff = as.ggplot(costs_ff_rem)
+costs_ff[is.na(costs_ff)] = 0
+el1300 = subset(costs_ff, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_ff, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_ff_b = subset(costs_ff, Data1=="Base")
+costs_ff_600 = subset(costs_ff, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_ff_600 = rbind(costs_ff_600, el1300, gas1300)
+costs_ff_600$Data1 = "Budg600"
+costs_ff =rbind(costs_ff_600, costs_ff_b)
+sum_ff = setkey(setDT(costs_ff), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+
+#ff4
+costs_ff4 = as.ggplot(costs_ff4_rem)
+costs_ff4[is.na(costs_ff4)] = 0
+el1300 = subset(costs_ff4, Data3=="Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data1=="Budg1300")
+gas1300 = subset(costs_ff4, Data3=="Secondary Energy|Gases (EUR/ t Ethylene)" & Data1=="Budg1300")
+costs_ff4_b = subset(costs_ff4, Data1=="Base")
+costs_ff4_600 = subset(costs_ff4, 
+                      Data1=="Budg600" & Value!="NA" & Data3 != "Final Energy|Electricity|Industry (EUR/ t Ethylene)" & Data3 != "Secondary Energy|Gases (EUR/ t Ethylene)") #filter
+costs_ff4_600 = rbind(costs_ff4_600, el1300, gas1300)
+costs_ff4_600$Data1 = "Budg600"
+costs_ff4 =rbind(costs_ff4_600, costs_ff4_b)
+sum_ff4 = setkey(setDT(costs_ff4), Year, Data1) [, list(total=sum(Value)), by=list(Year, Data1)]
+
+#total
+sum_costs_flex = data.frame("year" = sum_ocm$Year, "scen"=sum_ocm$Data1, "ocm" = sum_ocm$total, "sc"=sum_sc$total, "eh" = sum_eh$total, "ocm_2k" = sum_ff$total, "ocm_4k" = sum_ff4$total)
+sum_costs_flex_gg = melt(sum_costs_flex, measure.vars=c("ocm", "sc", "eh", "ocm_2k", "ocm_4k"))
+```
+
+PLOT COSTS
+```{r}
+flex2 = expression(~OCM~(2~kappa))
+flex4 = expression(~OCM~(4~kappa))
+
+vertDf<-data.frame(labels=c("0.38","0.1","0.04"),years=c(2020,2030,2050))
+
+plot_6b = ggplot(sum_costs_flex_gg, aes(x=year, y=value, bg=variable, shape=variable))+ 
+  geom_hline(yintercept=0, size=0.1, col="gray") +
+  geom_vline(data=vertDf, aes(xintercept=years,linetype=labels), size = 0.4, 
+             col="red", alpha=.6) +
+  scale_linetype_manual(name=expression("Carbon Intensity (t"[CO2]*"/MWh):"),
+                        values=c("0.38"="solid","0.1"="dashed","0.04"="dotted")) +
+  geom_point(alpha=0.7, cex=2.5, col="black") +
+  facet_wrap(~ scen)  + 
+  labs(x=("time in years"), y = expression("EUR/t"[Ethylene]))+
+  scale_shape_manual(name="", labels=c("OCM", "SC", "EH" ,  flex2, flex4),
+                     values=c(24, 21, 23, 2, 6)) +
+  scale_fill_manual(name="", labels=c("OCM", "SC", "EH",  flex2, flex4 ),
+                    values=c(ocm, "#8843B6", eh, ocm_ff, ocm_ff4)) +
+  theme_bw() + theme + 
+  scale_x_continuous(limits=c(2015, 2050)) + guides(shape = guide_legend(nrow = 3))
+
+```
+

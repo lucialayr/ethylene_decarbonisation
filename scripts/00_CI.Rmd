@@ -1,0 +1,91 @@
+---
+title: "01_CI"
+author: "Lucia S. Layritz"
+date: "1 November 2019"
+output: html_document
+---
+
+*DESCRIPTION*
+*this script produces the disaggregated emissions based on flow data of subprocesses for all technologies*
+*does not use life cycle emissions file as no scenario data*
+
+LOAD PACKAGES
+```{r}
+library(ggpubr)
+```
+
+GENERATE X-VECTOR [t_CO2/MWh]
+```{r}
+carbon_int = seq(0, 0.500, by=0.020)
+```
+
+INTENTORY ANALYSIS
+```{r}
+#CREATE EMPTY ARRAY FOR ALL TECHNOLOGIES
+inventory = array(0L, dim = c(8,5, 26), 
+                  dimnames=list(c("Electricity","Heat","System_Expansion","Refinery",
+                                   "Methane", "By_Products","Electrolyser","CarbCapt(net)"),
+                                c("SC", "EH", "OCM", "HO", "NG" ),
+                               paste(carbon_int, "t_CO2/MWh")))
+#FILL FLOW DATA
+flows = inventory
+
+flows["Electricity", "SC",] = 0.21 #MWh/kg
+flows["Heat", "SC",] = 0.488 #kg meth/kg eth
+flows["System_Expansion", "SC",] = 3.39 #MWH/kg th
+flows["Refinery", "SC",] = 3.58 # kg naphtha / kg ethylene, Gabi
+flows["Methane", "SC",] = 0.0571 #kg meth/kg eth
+flows["By_Products", "SC",] = NA
+flows["Electrolyser", "SC", ] = NA
+flows["CarbCapt(net)", "SC",] = NA
+
+flows[,"HO",] = flows[, "SC",]
+flows[,"NG",] = flows[, "SC",]
+
+
+flows["Electricity", "EH",] = 0.21 + 6.78 #MWh/kg
+flows["Heat", "EH",] = NA #kg/kg
+flows["System_Expansion", "EH",] = NA #MWH/kg
+flows["Refinery", "EH",] = 3.58 # kg naphtha / kg ethylene
+flows["Methane", "EH",] = 0.545 #kg/kg
+flows["By_Products", "EH",] = NA
+flows["Electrolyser", "EH",] = NA
+flows["CarbCapt(net)", "EH",] = NA
+
+flows["Electricity", "OCM", ] = 1.1 #MWh/kg
+flows["Heat", "OCM", ] = NA #kg/kg
+flows["System_Expansion", "OCM", ] =  2.462 #MWH/kg 
+flows["Refinery", "OCM", ] = NA 
+flows["Methane", "OCM", ] = 0.183 #kg/kg
+flows["By_Products", "OCM", ] = 1
+flows["Electrolyser", "OCM", ] = 32.2 #MWH/kg
+flows["CarbCapt(net)", "OCM", ] = 4.64 #kg/kg ethylene
+
+#FILL EMISSION FACTORS
+ef = inventory
+for (i in 1:5)
+  ef["Electricity", i,] = carbon_int
+ef["Heat",,] = 2.6 #kg/kg meth, taken from old cost caluclations, based on stochiometric combustion 
+#-> maybe better IPCC
+#ef[,,"Heat_el"] = rem_carbon_e[,,"Carbon_Intensity|Gross (kg CO2/MWh)"]
+for (i in 1:3)
+  ef["System_Expansion", i,] = carbon_int
+ef["System_Expansion", "HO",] = 0.279 + 0.446/13.4
+ef["System_Expansion", "NG",] = 0.202 + 0.478/11.2 #gabi value converted to mwh with ncv from ipcc
+ef["Refinery",,] = 0.535 #GaBi, per ton naphtha
+ef["Methane",,] = 2.6 #kg/kg meth, taken from old cost caluclations, based on stochiometric combustion 
+#-> maybe better IPCC
+ef["By_Products",,] = 0.623 #sum already, taken from excel, needs to be 1 in the other tables!
+for (i in 1:5)
+  ef["Electrolyser", i,] = carbon_int
+for (i in 1:5)
+  ef["CarbCapt(net)", i,] = (-1 + 1.47*carbon_int) 
+#captured co2 plus energy demand per co2 captured. (electricity + heat - waste_heat (normalized to co2))
+```
+
+CALCULATE EMISSIONS
+```{r}
+emissions = flows*ef
+```
+
+
