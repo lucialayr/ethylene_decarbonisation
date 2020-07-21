@@ -8,8 +8,8 @@ Lucia Sophie Layritz
 Input data needed to perform the calculation
 
 ### ```Scripts``` folder
-```Rmd``` Files starting with ```00_``` are for data processing and primary results
+```Rmd``` files starting with ```00_``` are for data processing and primary results
 
-```Rmd``` Files starting with ```0X_``` are for recreating figure X
+```Rmd``` files starting with ```0X_``` are for recreating figure X
 
-Dependencies are indicated inside the ```Rmd``` files
+Dependencies are indicated inside the files
