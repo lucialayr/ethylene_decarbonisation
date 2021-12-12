@@ -12,4 +12,4 @@ Input data needed to perform the calculation
 
 ```Rmd``` files starting with ```0X_``` are for recreating figure X
 
-Dependencies are indicated inside the files
+
