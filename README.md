@@ -1,5 +1,5 @@
 ### General information
-This repository contains code to recreate all figures from the paper published here: XXX
+This repository contains code to recreate all figures from Layritz et al. (Applied Energy, 2021, https://doi.org/10.1016/j.apenergy.2021.117049)
 
 ### Author
 Lucia Sophie Layritz
